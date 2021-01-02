@@ -23,7 +23,7 @@ sitek : a parameter specifying the range of coefficients
 Returns
 -------
 Jmat                 : array of shape (m, m), where m = n*(ceil(log2(k))+1),
-                  containing the coupling (ZZ) coefficients of the Ising 
+                  containing the coupling (ZZ) coefficients of the Ising
                   Hamiltonian
 hvec                 : array of shape (m,) containg the field (Z) coefficients
                   of the Ising Hamiltonian
@@ -113,55 +113,11 @@ identity_coefficient : a float representing the scalar that multiplies the
     return Jmat, hvec, identity_coefficient
 
 
-def ising_bin(Jmat, hvec, identity_coefficient, as_diag_vec=False):
+def ising(Jmat, hvec, identity_coefficient, as_diag_vec=False):
     """
-Generates the n-spin Ising Hamiltonian matrix specified by the input coupling (ZZ)
-coefficients, field (Z) coefficients and an identity coefficient. The basis
-is such that if the jth index corresponds to the spin configuration
-(s_0,s_1,s_2,...,s_(n-2),(s_(n-1)) then the binary representation of j is 
-s_(n-1)s_(n-2)...s_2s_1s_0.
-
-Parameters
-----------
-Jmat                 : array of shape (m, m), where m = n*(ceil(log2(k))+1),
-                  containing the coupling (ZZ) coefficients of the Ising 
-                  Hamiltonian
-hvec                 : array of shape (m,) containg the field (Z) coefficients
-                  of the Ising Hamiltonian
-identity_coefficient : a float representing the scalar that multiplies the
-                  identity term that is added to the Ising Hamiltonian
-as_diag_vec          : (defaults to False) if True, the output will be an
-                  array of shape (2**m,) instead of a diagonal sparse matrix
-
-Returns
--------
-H : The Ising Hamiltonian matrix of shape (2**m, 2**m), stored as a diagonal
- sparse matrix.
-    """
-    nqubits = Jmat.shape[0]
-    N = 2 ** nqubits
-    Hdiag = np.zeros(N, dtype=np.float64)
-    ket = np.array(list(range(N)))
-    for i in range(nqubits):
-        coeff, bra = Z(ket, i)
-        Hdiag[bra] += coeff * hvec[i]
-        for j in range(nqubits):
-            coeff1, bra = Z(ket, i)
-            coeff2, bra = Z(bra, j)
-            Hdiag[bra] += coeff1 * coeff2 * Jmat[i, j]
-    Hdiag += identity_coefficient
-    if as_diag_vec:
-        return Hdiag
-    else:
-        H = spsp.diags(Hdiag, 0)
-        return H
-
-
-def ising_ham(Jmat, hvec, identity_coefficient, as_diag_vec=False):
-    """
-Generates the n-spin Ising Hamiltonian matrix specified by the input coupling (ZZ)
-coefficients, field (Z) coefficients and an identity coefficient. The basis
-is such that if the jth index corresponds to the spin configuration
+Generates the n-spin Ising Hamiltonian matrix specified by the input coupling
+(ZZ) coefficients, field (Z) coefficients and an identity coefficient. The
+basis is such that if the jth index corresponds to the spin configuration
 (s_0,s_1,s_2,...,s_(n-2),(s_(n-1)) then the binary representation of j is
 s_(n-1)s_(n-2)...s_2s_1s_0.
 
@@ -201,13 +157,12 @@ H : The Ising Hamiltonian matrix of shape (2**m, 2**m), stored as a diagonal
         return H
 
 
-"""
-bin_mapping refers to the choice of whether to use log(k) or k qubits to represent a qudit
-"""
-
-
 def isingify(Gram, sitek, bin_mapping=True):
+    """
+bin_mapping refers to the choice of whether to use log(k) or k qubits to
+represent a qudit
+    """
     if bin_mapping:
-        return ising_bin(*svp_isingcoeffs_bin(Gram, sitek, bin_mapping))
+        return ising(*svp_isingcoeffs_bin(Gram, sitek, bin_mapping))
     else:
-        return ising_ham(*svp_isingcoeffs_ham(Gram, sitek, bin_mapping))
+        return ising(*svp_isingcoeffs_ham(Gram, sitek, bin_mapping))
