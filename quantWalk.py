@@ -1,10 +1,10 @@
-from qutip import *
+import qutip
 import numpy as np
 import isingify
 
 
 class SVPbyQuantumWalk:
-
+    '''Thanks to Jake Lishman for the help with bugs'''
     def __init__(self, dimension, k, times, qudit_mapping, graph):
         self.dim = dimension
         self.k = k
@@ -20,26 +20,33 @@ class SVPbyQuantumWalk:
         self.N = 2 ** self.n
         self.lam = 1 / self.N
 
-        # initialise a register
-        psi = []
-        for i in range(self.N):
-            psi.append(basis(self.N, i))
-        self.reg = sum(psi).unit()
+        # Initialise a register which has `n` qubits all in the |+> state.
+        plus_state = (qutip.basis(2, 0) + qutip.basis(2, 1)).unit()
+        self.reg = qutip.tensor([plus_state] * self.n)
 
     def SVPtoH(self, lattice):
 
         # graph hamiltonian
         if self.graph == 'FULL':  # (full graph)
-            hg = self.lam * self.N * (qeye(self.N) - (self.reg * self.reg.dag()))
+            hg = self.lam * self.N * (qutip.qeye([2]*self.n) - self.reg.proj())
         elif self.graph == 'HYPER':  # (hypercube)
-            x = []
-            for i in range(self.N - 1):
-                xi = np.zeros((self.N, self.N))
-                xi[:i, :i] = qeye(i)
-                xi[i:i+2, i:+2] = sigmax()
-                xi[i+2:, i+2:] = qeye(self.N - i - 2)
-                x.append(xi)
-            hg = self.lam * (self.N*qeye(self.N) - Qobj(sum(x)))
+            base = self.N * qutip.qeye([2]*self.n)
+            for i in range(self.n):
+                # Make an object that looks like a sum over every possible
+                #   I.I.[...].I.X.I.I.[...].I
+                # (i.e. all single-qubit sigma-x operators)
+                parts = []
+                # Identity on `i` qubits.
+                if i > 0:
+                    parts.append(qutip.qeye([2] * i))
+                # Now put in a sigma-x.
+                parts.append(qutip.sigmax())
+                # Identity on the rest of the qubits.
+                if i < self.n - 1:
+                    parts.append(qutip.qeye([2] * (self.n - 1 - i)))
+                # Now tensor-product all of them together to make the operator.
+                base -= qutip.tensor(parts)
+            hg = self.lam * base
         else:
             raise KeyError('Define graph type: FULL or HYPER')
 
@@ -51,14 +58,20 @@ class SVPbyQuantumWalk:
             jmat, hvec, ic = isingify.svp_isingcoeffs_ham(gram, self.k)
         else:
             raise KeyError('Define encoding type: "bin" or "ham"')
-        hp = isingify.ising_hamiltonian(jmat, hvec, ic)
+        hp = qutip.Qobj(
+            isingify.ising_hamiltonian(jmat, hvec, ic),
+            dims=[[2]*self.n, [2]*self.n],
+        )
 
-        # Full hamiltonian
+        # Full Hamiltonian, with tensor-product structure.
         self.H = hp + hg
         # print('H', H)
 
     def execute(self):
-        result = sesolve(self.H, self.reg, self.times, [sigmaz()], progress_bar=True)
+        # This makes a Z.Z.Z.[...] operator, rather than just a single-qubit
+        # operator.
+        multi_z = qutip.tensor([qutip.sigmaz()] * self.n)
+        result = qutip.sesolve(self.H, self.reg, self.times, e_ops=[multi_z], progress_bar=True)
         print('result', result)
         print('expect', result.expect)
 
@@ -75,7 +88,7 @@ def main():
     k = 4
     graph = 'FULL'
     qudit_mapping = 'bin'  #exclusively use bin for now
-    times = np.linspace(0.0, 1.0, 2)
+    times = np.linspace(0.0, 1.0, 101)
     experiment = SVPbyQuantumWalk(dim, k, times, qudit_mapping, graph)
     experiment.run()
 
