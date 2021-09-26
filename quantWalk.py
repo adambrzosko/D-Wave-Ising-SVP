@@ -2,6 +2,7 @@ import qutip
 import numpy as np
 import isingify
 import pickle
+import itertools
 import sage.all
 from sage.all import ZZ
 # from sage.misc.persist import SageUnpickler
@@ -18,7 +19,8 @@ class SVPbyQuantumWalk:
         self.graph = graph
         self.lattice = lattice
         if self.qudit_mapping == 'bin':
-            self.n = self.dim * int(np.ceil(np.log2(self.k)) + 1)
+            self.n = self.dim * int(np.ceil(np.log2(self.k)) + 1) # check why
+            # say 3 qudits encoded by log2(4) + 1 = 3 qubits each = 9 qubits
         elif self.qudit_mapping == 'ham':
             self.n = self.dim * self.k  # unsure check this
         else:
@@ -76,16 +78,27 @@ class SVPbyQuantumWalk:
     def execute(self):
         # This makes a Z.Z.Z.[...] operator, rather than just a single-qubit
         # operator.
-        # Need to check all Z.I combinations
         multi_z = qutip.tensor([qutip.sigmaz()] * self.n)
-        result = qutip.sesolve(self.H, self.reg, self.times, e_ops=[multi_z], progress_bar=True, options=options)
+        # Need to check all Z.-Z (0 and 1) combinations!!!
+        # all_comb = []
+        # for i in range(self.n + 1):
+           # operators = [qutip.sigmaz()] * i
+           # operators += [-qutip.sigmaz()] * (self.n - i)
+            # perm = list(itertools.permutations(operators))
+           # all_comb.append(qutip.tensor(operators))
+            # for j in range(len(perm)):
+               # a = list(perm[j])
+               # all_comb.append(qutip.tensor(a[0]))
+        result = qutip.sesolve(self.H, self.reg, self.times, e_ops=[], progress_bar=True, options=options)
         print('result', result)
-        print('expect', result.expect)
+        print('states', result.states)
         self.result = result
 
     def run(self, label):
         # create the lattice
         # lattice = np.random.randint(low=0, high=5, size=(self.dim, self.dim), dtype=int)
+        # values in the lattice were restricted to 5 due to the qudit mapping (this is based on k?) i think
+        # so with really large values there is a problem of not enough qubits in a qudit to encode the vectors
         self.SVPtoH()
         self.execute()
         with open(outputdir + '/result{}'.format(label), 'wb') as f:
@@ -97,7 +110,7 @@ def main():
     k = 4
     graph = 'FULL'
     qudit_mapping = 'bin'  # exclusively use bin for now
-    times = np.linspace(0.0, 1.0, 101)
+    times = np.linspace(0.0, 1.0, 10) # do for different times!!!
     with open(outputdir + '/bases', 'rb') as f:
         lattice = pickle.load(f) # unpickle
     lattice_good = lattice[1]
