@@ -41,11 +41,11 @@ def list_duplicates(seq, idx):
 for dup in sorted(list_duplicates(vectors, 8)):
     print(dup)
 
-data = sorted(list_duplicates(vectors, 8))
+data = sorted(list_duplicates(vectors, 0))
 x = []
 y = []
 for i in range(len(data)):
     x.append(data[i][0])
     y.append(data[i][1][0][0])
-plt.plot(x,y)
+plt.bar(x, y)
 plt.show()
