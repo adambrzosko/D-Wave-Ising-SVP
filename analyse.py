@@ -30,7 +30,7 @@ for j in range(shape[0]):
     a = f'{j:09b}'
     for i in range(dim):
         vect.append(int(a[i*qb_per_qd:(i+1)*qb_per_qd], 2)) # slice the bitstring and convert from binary to int
-    vectors.append(sum([x**2 for x in vect])/len(vect))
+    vectors.append(np.sqrt(sum([x**2 for x in vect])))
 
 def list_duplicates(seq, idx):
     tally = defaultdict(list)
