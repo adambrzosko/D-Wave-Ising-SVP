@@ -6,12 +6,12 @@ import itertools
 import sage.all
 from sage.all import ZZ
 # from sage.misc.persist import SageUnpickler
-outputdir = '/home/adam/Desktop/work/2021 Summer Research/code'
+outputdir = '/home/adam/Desktop/work/2021 Summer Research/code/Results'
 options = qutip.solver.Options(nsteps=10000)
 
 class SVPbyQuantumWalk:
     """Thanks to Jake Lishman for the help with bugs"""
-    def __init__(self, dimension, k, times, qudit_mapping, graph, lattice):
+    def __init__(self, dimension, k, times, qudit_mapping, graph, lattice, iteration):
         self.dim = dimension
         self.k = k
         self.times = times
@@ -25,6 +25,7 @@ class SVPbyQuantumWalk:
             self.n = self.dim * self.k  # unsure check this
         else:
             raise KeyError('Define encoding type: "bin" or "ham"')
+        self.iteration = iteration
         self.N = 2 ** self.n
         self.lam = 1 / self.N
 
@@ -90,8 +91,8 @@ class SVPbyQuantumWalk:
                # a = list(perm[j])
                # all_comb.append(qutip.tensor(a[0]))
         result = qutip.sesolve(self.H, self.reg, self.times, e_ops=[], progress_bar=True, options=options)
-        print('result', result)
-        print('states', result.states)
+        # print('result', result)
+        # print('states', result.states)
         self.result = result
 
     def run(self, label):
@@ -101,7 +102,7 @@ class SVPbyQuantumWalk:
         # so with really large values there is a problem of not enough qubits in a qudit to encode the vectors
         self.SVPtoH()
         self.execute()
-        with open(outputdir + '/result{}'.format(label), 'wb') as f:
+        with open(outputdir + '/result{}'.format(label) + '{}'.format(self.iteration), 'wb') as f:
             pickle.dump(self.result, f)
 
 def main():
@@ -116,10 +117,11 @@ def main():
     lattice_good = lattice[1]
     lattice_bad = lattice[0]
 
-    experiment_good = SVPbyQuantumWalk(dim, k, times, qudit_mapping, graph, lattice_good)
-    experiment_good.run('Good')
-    experiment_bad = SVPbyQuantumWalk(dim, k, times, qudit_mapping, graph, lattice_bad)
-    experiment_bad.run('Bad')
+    for i in range(10):
+        experiment_good = SVPbyQuantumWalk(dim, k, times, qudit_mapping, graph, lattice_good, i)
+        experiment_good.run('Good')
+        experiment_bad = SVPbyQuantumWalk(dim, k, times, qudit_mapping, graph, lattice_bad, i)
+        experiment_bad.run('Bad')
 
 
 if __name__ == "__main__":
